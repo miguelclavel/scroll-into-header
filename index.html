@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A name that travels into the header · Miguel Clavel</title>
+<meta name="description" content="A big name in the middle of the first screen that travels, as one object, into the header as you scroll. One number from 0 to 1 drives everything. By Miguel Clavel.">
+<style>
+  :root { --page: #F9F9FB; --ink: #1D1D21; --muted: #67676C; --rule: #DADADD; --bar: rgba(249,249,251,.86); }
+  @media (prefers-color-scheme: dark) { :root { --page: #0F0F11; --ink: #F5F5F7; --muted: #A3A3A8; --rule: #2E2E33; --bar: rgba(15,15,17,.86); } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  .bar { position: fixed; inset: 0 0 auto 0; height: 60px; z-index: 5; display: flex; align-items: center; justify-content: flex-end; padding: 0 clamp(20px, 4vw, 48px); }
+  .bar .bg { position: absolute; inset: 0; background: var(--bar); backdrop-filter: saturate(180%) blur(14px); -webkit-backdrop-filter: saturate(180%) blur(14px); border-bottom: 1px solid var(--rule); opacity: 0; }
+  .bar nav { position: relative; display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+  /* Where the name parks: an invisible copy in the header, measured once. */
+  .slot { position: absolute; line-height: 1; left: clamp(20px, 4vw, 48px); top: 50%; transform: translateY(-50%); font-size: 19px; font-weight: 700; letter-spacing: -0.035em; visibility: hidden; white-space: nowrap; }
+  .name { position: fixed; left: 0; top: 0; z-index: 6; margin: 0; font-size: clamp(48px, 10vw, 128px); font-weight: 750; letter-spacing: -0.045em; line-height: 1; white-space: nowrap; transform-origin: 0 0; will-change: transform; }
+  .track { height: 300vh; }
+  .stage { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; }
+  .sub { margin-top: 150px; font-size: clamp(16px, 2vw, 20px); color: var(--muted); text-align: center; padding: 0 24px; }
+  .after { width: min(680px, 100% - 40px); margin: 0 auto; padding: 40px 0 50vh; font-size: 18px; line-height: 1.6; color: var(--muted); }
+  .after h2 { color: var(--ink); font-size: 32px; letter-spacing: -0.03em; }
+  .after a { color: inherit; }
+</style>
+</head>
+<body>
+<header class="bar"><div class="bg" id="bg"></div><span class="slot" id="slot">Miguel Clavel</span><nav><span>Work</span><span>About</span><span>Contact</span></nav></header>
+<h1 class="name" id="name">Miguel Clavel</h1>
+<div class="track" id="track"><div class="stage"><p class="sub" id="sub">Scroll. The name doesn't fade out and reappear up there. It travels.</p></div></div>
+<main class="after">
+  <h2>Parked.</h2>
+  <p>One number between 0 and 1, how far you are through the tall section, drives everything: the size of the name, where it sits, and how much the rest fades. It's bent through an ease out curve before it's used, because straight lines feel mechanical.</p>
+  <p>The nice part is you can tune it forever by changing one number. <a href="https://github.com/miguelclavel/scroll-into-header">Code and prompt</a>.</p>
+</main>
+<script>
+  const name = document.getElementById('name'), slot = document.getElementById('slot'), track = document.getElementById('track');
+  const sub = document.getElementById('sub'), bg = document.getElementById('bg');
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let start, end, natural;
+
+  // Measure the two places the name lives: centred on the first screen, and
+  // parked in the header slot. Everything in between is just a blend.
+  function measure() {
+    name.style.transform = 'none';
+    natural = name.getBoundingClientRect();
+    const s = slot.getBoundingClientRect();
+    start = { x: (innerWidth - natural.width) / 2, y: innerHeight / 2 - natural.height / 2 - 20, scale: 1 };
+    end = { x: s.left, y: s.top, scale: s.height / natural.height };
+    frame();
+  }
+
+  let forced = null;
+  function frame() {
+    const r = track.getBoundingClientRect();
+    const raw = forced != null ? forced : clamp(-r.top / (r.height - innerHeight), 0, 1);   // the only input
+    const p = reduce ? (raw > 0 ? 1 : 0) : easeOut(raw);
+    const x = start.x + (end.x - start.x) * p, y = start.y + (end.y - start.y) * p, k = start.scale + (end.scale - start.scale) * p;
+    name.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
+    sub.style.opacity = String(clamp(1 - p * 1.6, 0, 1));
+    bg.style.opacity = String(clamp((p - 0.6) / 0.4, 0, 1));
+  }
+
+  let req = null;
+  addEventListener('scroll', () => { if (!req) req = requestAnimationFrame(() => { req = null; frame(); }); }, { passive: true });
+  addEventListener('resize', measure);
+  document.fonts && document.fonts.ready.then(measure);
+  measure();
+
+  // ?at=0.5 freezes the journey part way, for the README picture.
+  const at = parseFloat(new URLSearchParams(location.search).get('at'));
+  if (at >= 0) { forced = at; frame(); }
+</script>
+</body>
+</html>
